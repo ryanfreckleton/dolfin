@@ -35,19 +35,17 @@ mesh = Mesh("../dolfin_fine.xml.gz")
 sub_domains = MeshFunction("size_t", mesh, "../dolfin_fine_subdomains.xml.gz")
 
 # Build function spaces on Mini element
-P1 = VectorElement("Lagrange", mesh.ufl_cell(), 1)
-B = VectorElement("Bubble",   mesh.ufl_cell(), 3)
-Q = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
-W = FunctionSpace(mesh, (P1 + B) * Q)
+P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+B = FiniteElement("Bubble",   mesh.ufl_cell(), 3)
+V = VectorElement(NodalEnrichedElement(P1, B))
+W = FunctionSpace(mesh, V * P1)
 
 # No-slip boundary condition for velocity
-# NOTE: Projection here is inefficient workaround of issue #489, FFC issue #69
-noslip = project(Constant((0, 0)), W.sub(0).collapse())
+noslip = Constant((0, 0))
 bc0 = DirichletBC(W.sub(0), noslip, sub_domains, 0)
 
 # Inflow boundary condition for velocity
-# NOTE: Projection here is inefficient workaround of issue #489, FFC issue #69
-inflow = project(Expression(("-sin(x[1]*pi)", "0.0"), degree=2), W.sub(0).collapse())
+inflow = Expression(("-sin(x[1]*pi)", "0.0"), degree=2)
 bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
 # Collect boundary conditions

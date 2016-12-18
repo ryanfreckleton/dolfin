@@ -41,18 +41,19 @@ following way:
     sub_domains = MeshFunction("size_t", mesh, "../dolfin_fine_subdomains.xml.gz")
 
 Next, we define a :py:class:`FunctionSpace
-<dolfin.functions.functionspace.FunctionSpace>` on Mini element
-``(P1 + B) * Q``. UFL object ``P1 + B`` stands for the vectorial
+<dolfin.functions.functionspace.FunctionSpace>` on Mini element.
+UFL object ``NodalEnrichedElement(P1, B)`` stands for a scalar
 Lagrange element of degree 1 enriched with the cubic Bubble.
-``(P1 + B) * Q`` defines the mixed element for velocity and pressure.
+``VectorElement`` makes vector-valued element of it.
+``V * Q`` defines the mixed element for velocity and pressure.
 
 .. code-block:: python
 
     # Build function spaces on Mini element
-    P1 = VectorElement("Lagrange", mesh.ufl_cell(), 1)
-    B = VectorElement("Bubble",   mesh.ufl_cell(), 3)
-    Q = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
-    W = FunctionSpace(mesh, (P1 + B) * Q)
+    P1 = FiniteElement("Lagrange", mesh.ufl_cell(), 1)
+    B = FiniteElement("Bubble",   mesh.ufl_cell(), 3)
+    V = VectorElement(NodalEnrichedElement(P1, B))
+    W = FunctionSpace(mesh, V * P1)
 
 Now that we have our mixed function space and marked subdomains
 defining the boundaries, we define boundary conditions:
@@ -60,13 +61,11 @@ defining the boundaries, we define boundary conditions:
 .. code-block:: python
 
     # No-slip boundary condition for velocity
-    # NOTE: Projection here is inefficient workaround of issue #489, FFC issue #69
-    noslip = project(Constant((0, 0)), W.sub(0).collapse())
+    noslip = Constant((0, 0))
     bc0 = DirichletBC(W.sub(0), noslip, sub_domains, 0)
 
     # Inflow boundary condition for velocity
-    # NOTE: Projection here is inefficient workaround of issue #489, FFC issue #69
-    inflow = project(Expression(("-sin(x[1]*pi)", "0.0"), degree=2), W.sub(0).collapse())
+    inflow = Expression(("-sin(x[1]*pi)", "0.0"), degree=2)
     bc1 = DirichletBC(W.sub(0), inflow, sub_domains, 1)
 
     # Collect boundary conditions
